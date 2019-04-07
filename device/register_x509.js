@@ -53,7 +53,9 @@ var createAllCerts = function(cb) {
 		var filter = ".pem";
 		if (!fs.existsSync(startPath)){
 				debug("no dir ",startPath);
+				fs.mkdirSync(startPath);
 				callback();
+            return;
 			}
 
 		var files=fs.readdirSync(startPath);
@@ -72,7 +74,6 @@ var createAllCerts = function(cb) {
                cert : fs.readFileSync(startPath+id+"_cert.pem", 'utf-8').toString(),
                key : fs.readFileSync(startPath+id+"_key.pem", 'utf-8').toString()
             };
-            debug(selfSignedCert);
             cb();
             return;
 			};
