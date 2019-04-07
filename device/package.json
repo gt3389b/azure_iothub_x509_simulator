@@ -1,10 +1,11 @@
 {
-  "name": "tpm_device_simulator",
+  "name": "x509_device_simulator",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "register_x509.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "DEBUG=reg node register_x509.js"
   },
   "author": "",
   "license": "ISC",
@@ -31,5 +32,6 @@
   },
   "devDependencies": {
     "patch-package": "^5.1.1"
-  }
+  },
+  "url": ""
 }
