@@ -49,9 +49,9 @@ var createAllCerts = function(callback) {
     function(callback) {
       debug('creating self-signed cert ' +id);
       certHelper.createSelfSignedCert(x509RegistrationId, function(err, cert) {
-         console.log(chalk.green('saving cert to cert/' + x509RegistrationId + '_cert.pem.'));
+         debug(chalk.green('saving cert to cert/' + x509RegistrationId + '_cert.pem.'));
          fs.writeFileSync('cert/'+x509RegistrationId + '_cert.pem', cert.cert);
-         console.log(chalk.green('saving key to cert/' + x509RegistrationId + '_key.pem.'));
+         debug(chalk.green('saving key to cert/' + x509RegistrationId + '_key.pem.'));
          fs.writeFileSync('cert/'+x509RegistrationId + '_key.pem', cert.key);
         selfSignedCert = cert;
         callback(err);
@@ -133,13 +133,13 @@ var X509Individual = function() {
   this.send = function(Transport, callback) {
       var Protocol = require('azure-iot-device-mqtt').MqttWs;
 
-      var connectionString = 'HostName=rdliothub01.azure-devices.net;DeviceId='+self.deviceId+';x509=true';
+      var connectionString = 'HostName='+iothubHost+';DeviceId='+self.deviceId+';x509=true';
       var client = DeviceClient.fromConnectionString(connectionString, Protocol);
       var connectCallback = function (err) {
          if (err) {
             console.error('Could not connect: ' + err.message);
          } else {
-            console.log('Client connected');
+            debug('Client connect to '+iothubHost);
 
             // Create a message and send it to the IoT Hub every second
             var sendInterval = setInterval(function () {
@@ -149,10 +149,10 @@ var X509Individual = function() {
                var data = JSON.stringify({ deviceId: self.deviceId, windSpeed: windSpeed, temperature: temperature, humidity: humidity });
                var message = new Message(data);
                message.properties.add('temperatureAlert', (temperature > 28) ? 'true' : 'false');
-               console.log('Sending message: ' + message.getData());
+               debug('Sending message: ' + message.getData());
                client.sendEvent(message, function printResult(err, res) {
                   if (err) console.log('SEND error: ' + err.toString());
-                  if (res) console.log('SEND status: ' + res.constructor.name);
+                  if (res) debug('sendEvent result status: ' + res.constructor.name);
                   clearInterval(sendInterval);
                   client.close();
                   callback();
@@ -220,7 +220,7 @@ var do_it = function() {
               debug(JSON.stringify(result,null,'  '));
               debug('getting twin');
               registry.getTwin(config.testObj.deviceId,function(err, twin) {
-                 debug(twin);
+                 //debug(twin);
                  callback(err, twin);
               });
            },
