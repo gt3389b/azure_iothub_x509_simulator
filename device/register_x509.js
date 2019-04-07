@@ -9,6 +9,7 @@ var assert = require('assert');
 var uuid = require('uuid');
 var chalk = require('chalk');
 var fs = require('fs');
+var path = require('path');
 var crypto = require('crypto');
 var debug = require('debug')('reg');
 var Http = require('azure-iot-provisioning-device-http').Http;
@@ -20,6 +21,7 @@ var ProvisioningDeviceClient = require('azure-iot-provisioning-device').Provisio
 var ProvisioningServiceClient = require('azure-iot-provisioning-service').ProvisioningServiceClient;
 var X509Security = require('azure-iot-security-x509').X509Security;
 var Registry = require('azure-iothub').Registry;
+var IoTCommon = require('azure-iot-common'); // so we can access errors
 var DeviceClient = require('azure-iot-device').Client;
 var X509AuthenticationProvider = require('azure-iot-device').X509AuthenticationProvider;
 var Message = require('azure-iot-device').Message;
@@ -40,12 +42,43 @@ var selfSignedCert;
 var x509DeviceId;
 var x509RegistrationId;
 
-var createAllCerts = function(callback) {
+var createAllCerts = function(cb) {
   var id = uuid.v4();
   x509DeviceId = id;
   x509RegistrationId = id;
 
   async.waterfall([
+    function(callback) {
+		var startPath = "cert/";
+		var filter = ".pem";
+		if (!fs.existsSync(startPath)){
+				debug("no dir ",startPath);
+				callback();
+			}
+
+		var files=fs.readdirSync(startPath);
+		for(var i=0;i<files.length;i++){
+			var filename=path.join(startPath,files[i]);
+			var stat = fs.lstatSync(filename);
+			if (stat.isDirectory()){
+            fromDir(filename,filter); //recurse
+			}
+			else if (filename.indexOf(filter)>=0) {
+            //debug('-- found: ',filename);
+            id = filename.split('_')[0].split('/')[1];
+            x509DeviceId = id;
+            x509RegistrationId = id;
+            selfSignedCert = {
+               cert : fs.readFileSync(startPath+id+"_cert.pem", 'utf-8').toString(),
+               key : fs.readFileSync(startPath+id+"_key.pem", 'utf-8').toString()
+            };
+            debug(selfSignedCert);
+            cb();
+            return;
+			};
+		};
+      callback();
+    },
     function(callback) {
       debug('creating self-signed cert ' +id);
       certHelper.createSelfSignedCert(x509RegistrationId, function(err, cert) {
@@ -62,7 +95,7 @@ var createAllCerts = function(callback) {
       //setTimeout(callback, 60000);
       setTimeout(callback, 2000);
     }
-  ], callback);
+  ], cb);
 };
 
 
@@ -110,7 +143,10 @@ var X509Individual = function() {
     };
 
     provisioningServiceClient.createOrUpdateIndividualEnrollment(enrollment, function (err) {
-      if (err) {
+      if (err instanceof IoTCommon.errors.DeviceAlreadyExistsError) { 
+        callback();
+      }
+      else if (err){
         callback(err);
       } else {
         callback();
@@ -132,7 +168,6 @@ var X509Individual = function() {
 
   this.send = function(Transport, callback) {
       var Protocol = require('azure-iot-device-mqtt').MqttWs;
-
       var connectionString = 'HostName='+iothubHost+';DeviceId='+self.deviceId+';x509=true';
       var client = DeviceClient.fromConnectionString(connectionString, Protocol);
       var connectCallback = function (err) {
@@ -221,14 +256,17 @@ var do_it = function() {
               debug('getting twin');
               registry.getTwin(config.testObj.deviceId,function(err, twin) {
                  //debug(twin);
-                 callback(err, twin);
+                 //callback(err, twin);
+                 callback(err);
               });
            },
+           /*
            function(twin, callback) {
               debug('asserting twin contents');
               assert.strictEqual(twin.properties.desired.testProp, config.testObj._testProp);
               callback();
            },
+           */
            function(callback) {
               config.testObj.send(Transport, callback);
            },
