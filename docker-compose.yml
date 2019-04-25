@@ -1,0 +1,11 @@
+version: "3"
+services:
+  device:
+    #image: gt3389b/node-simulator:latest
+    build:
+      dockerfile: Dockerfile
+      context: ./device
+    working_dir: /app
+    environment:
+      NODE_ENV: development
+    command: npm start

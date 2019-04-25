@@ -6,9 +6,7 @@ WORKDIR /app
 
 
 # Add your source files
-COPY device/ .  
+COPY . .  
 RUN rm -r node_modules
 RUN npm install
-RUN ls
-RUN cat package.json
 CMD ["npm","start"]  
