@@ -25,6 +25,7 @@ var IoTCommon = require('azure-iot-common'); // so we can access errors
 var DeviceClient = require('azure-iot-device').Client;
 var X509AuthenticationProvider = require('azure-iot-device').X509AuthenticationProvider;
 var Message = require('azure-iot-device').Message;
+const getId = require('docker-container-id');
 var certHelper = require('./cert_helper');
 
 var idScope = process.env.AZURE_DPS_IDSCOPE;
@@ -42,7 +43,7 @@ var selfSignedCert;
 var x509DeviceId;
 var x509RegistrationId;
 
-var createAllCerts = function(cb) {
+var createAllCerts = function(cont_id, cb) {
   var id = uuid.v4();
   x509DeviceId = id;
   x509RegistrationId = id;
@@ -50,7 +51,8 @@ var createAllCerts = function(cb) {
   async.waterfall([
     function(callback) {
 		var startPath = "cert/";
-		var filter = ".pem";
+		//var filter = ".pem";
+		var filter = cont_id+"_";
 		if (!fs.existsSync(startPath)){
 				debug("no dir ",startPath);
 				fs.mkdirSync(startPath);
@@ -67,12 +69,13 @@ var createAllCerts = function(cb) {
 			}
 			else if (filename.indexOf(filter)>=0) {
             //debug('-- found: ',filename);
-            id = filename.split('_')[0].split('/')[1];
+            //id = filename.split('_')[0].split('/')[1];
+            id = filename.split('_')[1];
             x509DeviceId = id;
             x509RegistrationId = id;
             selfSignedCert = {
-               cert : fs.readFileSync(startPath+id+"_cert.pem", 'utf-8').toString(),
-               key : fs.readFileSync(startPath+id+"_key.pem", 'utf-8').toString()
+               cert : fs.readFileSync(startPath+cont_id+"_"+id+"_cert.pem", 'utf-8').toString(),
+               key : fs.readFileSync(startPath+cont_id+"_"+id+"_key.pem", 'utf-8').toString()
             };
             cb();
             return;
@@ -83,10 +86,10 @@ var createAllCerts = function(cb) {
     function(callback) {
       debug('creating self-signed cert ' +id);
       certHelper.createSelfSignedCert(x509RegistrationId, function(err, cert) {
-         debug(chalk.green('saving cert to cert/' + x509RegistrationId + '_cert.pem.'));
-         fs.writeFileSync('cert/'+x509RegistrationId + '_cert.pem', cert.cert);
-         debug(chalk.green('saving key to cert/' + x509RegistrationId + '_key.pem.'));
-         fs.writeFileSync('cert/'+x509RegistrationId + '_key.pem', cert.key);
+         debug(chalk.green('saving cert to cert/' + cont_id+"_"+x509RegistrationId + '_cert.pem.'));
+         fs.writeFileSync('cert/'+cont_id+"_"+x509RegistrationId + '_cert.pem', cert.cert);
+         debug(chalk.green('saving key to cert/' + cont_id+"_"+x509RegistrationId + '_key.pem.'));
+         fs.writeFileSync('cert/'+cont_id+"_"+x509RegistrationId + '_key.pem', cert.key);
         selfSignedCert = cert;
         callback(err);
       });
@@ -237,7 +240,16 @@ var do_it = function() {
      config.testObj.transports.forEach(function (Transport) {
         async.waterfall([
            function(callback) {
-              createAllCerts(callback);
+              var promise = getId();
+              promise.then(function(res, err) {
+                 if (!res)
+                    res=42
+                 callback(err, res);
+              });
+           },
+           function(id, callback) {
+              debug("Container ID: ",id);
+              createAllCerts(id, callback);
            },
            function(callback) {
               debug('initializing');

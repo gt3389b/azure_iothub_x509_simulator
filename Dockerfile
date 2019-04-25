@@ -2,7 +2,7 @@ FROM node:10-slim
 
 #RUN npx patch-package
 
-WORKDIR /home
+WORKDIR /app
 
 
 # Add your source files
