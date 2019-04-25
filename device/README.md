@@ -1,6 +1,6 @@
 # Environment config
 
-## create .env that contains the following
+## Create an .env that contains the following variables:
 ```
 AZURE_DPS_CS=HostName=XXX;SharedAccessKeyName=XXX;SharedAccessKey=XXX
 AZURE_DPS_HOSTNAME=global.azure-devices-provisioning.net
