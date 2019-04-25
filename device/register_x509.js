@@ -12,10 +12,10 @@ var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
 var debug = require('debug')('reg');
-var Http = require('azure-iot-provisioning-device-http').Http;
+//var Http = require('azure-iot-provisioning-device-http').Http;
 //var Amqp = require('azure-iot-provisioning-device-amqp').Amqp;
 //var AmqpWs = require('azure-iot-provisioning-device-amqp').AmqpWs;
-var Mqtt = require('azure-iot-provisioning-device-mqtt').Mqtt;
+//var Mqtt = require('azure-iot-provisioning-device-mqtt').Mqtt;
 var MqttWs = require('azure-iot-provisioning-device-mqtt').MqttWs;
 var ProvisioningDeviceClient = require('azure-iot-provisioning-device').ProvisioningDeviceClient;
 var ProvisioningServiceClient = require('azure-iot-provisioning-service').ProvisioningServiceClient;
@@ -179,6 +179,7 @@ var X509Individual = function() {
             console.error('Could not connect: ' + err.message);
          } else {
             debug('Client connect to '+iothubHost);
+            var count = 10;
 
             // Create a message and send it to the IoT Hub every second
             var sendInterval = setInterval(function () {
@@ -192,9 +193,11 @@ var X509Individual = function() {
                client.sendEvent(message, function printResult(err, res) {
                   if (err) console.log('SEND error: ' + err.toString());
                   if (res) debug('sendEvent result status: ' + res.constructor.name);
-                  clearInterval(sendInterval);
-                  client.close();
-                  callback();
+                  if (!count--) {
+                     clearInterval(sendInterval);
+                     client.close();
+                     callback();
+                  }
                });
             }, 2000);
 
@@ -281,6 +284,7 @@ var do_it = function() {
            },
            */
            function(callback) {
+              var counter = 10;
               config.testObj.send(Transport, callback);
            },
            function(callback) {
