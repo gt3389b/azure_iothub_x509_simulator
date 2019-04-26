@@ -12,10 +12,6 @@ var fs = require('fs');
 var path = require('path');
 var crypto = require('crypto');
 var debug = require('debug')('reg');
-//var Http = require('azure-iot-provisioning-device-http').Http;
-//var Amqp = require('azure-iot-provisioning-device-amqp').Amqp;
-//var AmqpWs = require('azure-iot-provisioning-device-amqp').AmqpWs;
-//var Mqtt = require('azure-iot-provisioning-device-mqtt').Mqtt;
 var MqttWs = require('azure-iot-provisioning-device-mqtt').MqttWs;
 var ProvisioningDeviceClient = require('azure-iot-provisioning-device').ProvisioningDeviceClient;
 var ProvisioningServiceClient = require('azure-iot-provisioning-service').ProvisioningServiceClient;
@@ -37,7 +33,7 @@ var iothubHost = process.env.AZURE_IOTHUB_HOST;
 var provisioningServiceClient = ProvisioningServiceClient.fromConnectionString(provisioningConnectionString);
 var registry = Registry.fromConnectionString(registryConnectionString);
 
-var X509IndividualTransports = [ MqttWs ];
+//var X509IndividualTransports = [ MqttWs ];
 
 var selfSignedCert;
 var x509DeviceId;
@@ -53,6 +49,8 @@ var createAllCerts = function(cont_id, cb) {
 		var startPath = "cert/";
 		//var filter = ".pem";
 		var filter = cont_id+"_";
+
+      // check if the directory exists
 		if (!fs.existsSync(startPath)){
 				debug("no dir ",startPath);
 				fs.mkdirSync(startPath);
@@ -60,6 +58,7 @@ var createAllCerts = function(cont_id, cb) {
             return;
 			}
 
+      // Look for the cert/key for this device
 		var files=fs.readdirSync(startPath);
 		for(var i=0;i<files.length;i++){
 			var filename=path.join(startPath,files[i]);
@@ -84,6 +83,8 @@ var createAllCerts = function(cont_id, cb) {
       callback();
     },
     function(callback) {
+
+      // If the cert/key for the device doesn't exist, create it
       debug('creating self-signed cert ' +id);
       certHelper.createSelfSignedCert(x509RegistrationId, function(err, cert) {
          debug(chalk.green('saving cert to cert/' + cont_id+"_"+x509RegistrationId + '_cert.pem.'));
@@ -107,7 +108,7 @@ var X509Individual = function() {
 
   var self = this;
 
-  this.transports = X509IndividualTransports;
+  //this.transports = X509IndividualTransports;
 
    /*
     *  Initialize
@@ -233,71 +234,73 @@ var X509Individual = function() {
 };
 
 var do_it = function() {
+   /*
   [
     {
       testName: 'x509 individual enrollment with Self Signed Certificate',
       testObj: new X509Individual()
     },
   ].forEach(function(config) {
+  */
 
-     config.testObj.transports.forEach(function (Transport) {
-        async.waterfall([
-           function(callback) {
-              var promise = getId();
-              promise.then(function(res, err) {
-                 if (!res)
-                    res=42
-                 callback(err, res);
-              });
-           },
-           function(id, callback) {
-              debug("Container ID: ",id);
-              createAllCerts(id, callback);
-           },
-           function(callback) {
-              debug('initializing');
-              config.testObj.initialize(callback);
-           },
-           function(callback) {
-              debug('enrolling');
-              config.testObj.enroll(callback);
-           },
-           function(callback) {
-              debug('registering device');
-              config.testObj.register(Transport, callback);
-           },
-           function(result, callback) {
-              debug('success registering device');
-              debug(JSON.stringify(result,null,'  '));
-              debug('getting twin');
-              registry.getTwin(config.testObj.deviceId,function(err, twin) {
-                 //debug(twin);
-                 //callback(err, twin);
-                 callback(err);
-              });
-           },
-           /*
-           function(twin, callback) {
-              debug('asserting twin contents');
-              assert.strictEqual(twin.properties.desired.testProp, config.testObj._testProp);
-              callback();
-           },
-           */
-           function(callback) {
-              var counter = 10;
-              config.testObj.send(Transport, callback);
-           },
-           function(callback) {
-              debug('sleeping before delete');
-              setTimeout(callback, 2000);
-           },
-           function(callback) {
-              debug('cleaningup');
-              config.testObj.cleanup(callback);
-           },
-        ]);
-     });
-  });
+   var x509 = new X509Individual();
+   var Transport = MqttWs;
+   async.waterfall([
+      function(callback) {
+         var promise = getId();
+         promise.then(function(res, err) {
+            if (!res)
+               res=42
+            callback(err, res);
+         });
+      },
+      function(id, callback) {
+         debug("Container ID: ",id);
+         createAllCerts(id, callback);
+      },
+      function(callback) {
+         debug('initializing');
+         x509.initialize(callback);
+      },
+      function(callback) {
+         debug('enrolling');
+         x509.enroll(callback);
+      },
+      function(callback) {
+         debug('registering device');
+         x509.register(Transport, callback);
+      },
+      function(result, callback) {
+         debug('success registering device');
+         debug(JSON.stringify(result,null,'  '));
+         debug('getting twin');
+         registry.getTwin(x509.deviceId,function(err, twin) {
+            //debug(twin);
+            //callback(err, twin);
+            callback(err);
+         });
+      },
+      /*
+      function(twin, callback) {
+         debug('asserting twin contents');
+         assert.strictEqual(twin.properties.desired.testProp, x509._testProp);
+         callback();
+      },
+      */
+      function(callback) {
+         var counter = 10;
+         x509.send(Transport, callback);
+      },
+      function(callback) {
+         debug('sleeping before delete');
+         setTimeout(callback, 2000);
+      },
+      function(callback) {
+         debug('cleaningup');
+         x509.cleanup(callback);
+      },
+   ]);
+  //});
 }
 
 do_it();
