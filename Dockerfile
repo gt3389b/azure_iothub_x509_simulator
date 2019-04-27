@@ -6,7 +6,7 @@ WORKDIR /app
 
 
 # Add your source files
-COPY . .  
+COPY src .  
 RUN rm -r node_modules
 RUN npm install
 CMD ["npm","start"]  
